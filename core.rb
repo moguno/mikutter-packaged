@@ -131,3 +131,60 @@ def install_plugin_by_tgz(tgz_string, plugin_dir = PLUGIN_DIR)
 
   FileUtils.mv(extracted_dir, File.join(plugin_dir, spec["slug"].to_s)) 
 end
+
+def get_plugin_info(dir, plugin_dir = PLUGIN_DIR)
+  result = {}
+
+  result[:dir] = dir
+  result[:spec] = get_local_spec(File.join(plugin_dir, dir))
+
+  # specファイルが無い -> 管理外ってことにする
+  result[:status] = if result[:spec] == nil
+    :unmanaged
+  else
+    # ディレクトリ名とslugが同じ -> 有効
+    if result[:spec]["slug"] == dir.to_sym
+      :enabled
+    else
+      :disabled
+    end
+  end
+
+  result
+end
+
+def get_local_plugins (plugin_dir = PLUGIN_DIR)
+  Dir.chdir(plugin_dir) {
+    Dir.glob("*").select { |_| FileTest.directory?(_) }.map { |dir|
+      get_plugin_info(dir, plugin_dir)
+    }
+  }
+end
+
+def disable_plugin(slug, plugin_dir = PLUGIN_DIR)
+  target = get_local_plugins.find { |_| _[:spec]["slug"] == slug.to_sym }
+
+  if !target
+    raise "プラグインが見つかりません"
+  end
+
+  if target[:status] != :enabled
+    raise "プラグインは有効ではありません"
+  end
+
+  FileUtils.mv(File.join(plugin_dir, target[:dir]), File.join(plugin_dir, "__disabled__#{target[:dir]}"))
+end
+
+def enable_plugin(slug, plugin_dir = PLUGIN_DIR)
+  target = get_local_plugins.find { |_| _[:spec] && (_[:spec]["slug"] == slug.to_sym) }
+
+  if !target
+    raise "プラグインが見つかりません"
+  end
+
+  if target[:status] != :disabled
+    raise "プラグインは無効ではありません"
+  end
+
+  FileUtils.mv(File.join(plugin_dir, target[:dir]), File.join(plugin_dir, target[:spec]["slug"].to_s))
+end
