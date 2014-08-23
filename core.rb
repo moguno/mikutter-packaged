@@ -132,6 +132,7 @@ def install_plugin_by_tgz(tgz_string, plugin_dir = PLUGIN_DIR)
   FileUtils.mv(extracted_dir, File.join(plugin_dir, spec["slug"].to_s)) 
 end
 
+# インストールされたプラグインの情報を取得する
 def get_plugin_info(dir, plugin_dir = PLUGIN_DIR)
   result = {}
 
@@ -153,6 +154,7 @@ def get_plugin_info(dir, plugin_dir = PLUGIN_DIR)
   result
 end
 
+# インストールされたプラグインのリストを取得する
 def get_local_plugins (plugin_dir = PLUGIN_DIR)
   Dir.chdir(plugin_dir) {
     Dir.glob("*").select { |_| FileTest.directory?(_) }.map { |dir|
@@ -161,8 +163,9 @@ def get_local_plugins (plugin_dir = PLUGIN_DIR)
   }
 end
 
+# プラグインを無効化する
 def disable_plugin(slug, plugin_dir = PLUGIN_DIR)
-  target = get_local_plugins.find { |_| _[:spec]["slug"] == slug.to_sym }
+  target = get_local_plugins.find { |_| _[:spec] && (_[:spec]["slug"] == slug.to_sym) }
 
   if !target
     raise "プラグインが見つかりません"
@@ -175,6 +178,7 @@ def disable_plugin(slug, plugin_dir = PLUGIN_DIR)
   FileUtils.mv(File.join(plugin_dir, target[:dir]), File.join(plugin_dir, "__disabled__#{target[:dir]}"))
 end
 
+# プラグインを有効化する
 def enable_plugin(slug, plugin_dir = PLUGIN_DIR)
   target = get_local_plugins.find { |_| _[:spec] && (_[:spec]["slug"] == slug.to_sym) }
 

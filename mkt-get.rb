@@ -24,6 +24,10 @@ def install(argv)
   user_name = argv[0]
   repo_name = argv[1]
 
+  if get_local_plugins.find { |_| _[:spec] && (_[:spec]["slug"] == repo_name.to_sym) }
+    raise "既にインストールされています"
+  end
+
   spec = get_remote_spec(user_name, repo_name)
 
   tgz = get_repo_tarball(user_name, repo_name, "master")
