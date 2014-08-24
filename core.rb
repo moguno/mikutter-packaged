@@ -173,7 +173,7 @@ module Packaged::Remote
     puts url_str
 
     if limit == 0
-      raise "redirect limit exceeded"
+      raise RemoteException.new("redirect limit exceeded")
     end
 
     url = URI.parse(url_str)
@@ -247,7 +247,7 @@ module Packaged::Remote
     result = {}
 
     result[:repo_name] = repo_name
-    result[:spec] = Packaged::Remote::get_spec(user_name, _["name"])
+    result[:spec] = Packaged::Remote::get_spec(user_name, repo_name)
 
     result
   end
@@ -265,6 +265,10 @@ module Packaged::Remote
         # 例外は無視
       end
     }
+
+    if !result
+      raise RemoteException.new("spec file is not found")
+    end
 
     result
   end

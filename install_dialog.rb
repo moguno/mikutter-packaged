@@ -158,11 +158,14 @@ module Packaged::GUI::Install
 
     if user_name
       Packaged::Remote::get_maybe_mikutter_repos(user_name).map { |_| 
+        result = nil
+
         begin
-          Packaged::Remote::get_plugin_info(user_name, _["name"])
+          result = Packaged::Remote::get_plugin_info(user_name, _["name"])
         rescue => e
-          nil
         end
+
+        result
       }.compact.each { |_|
         item = store.append
         store.set_values(item, [_[:spec]["slug"], _[:spec]["description"], _])
