@@ -4,9 +4,11 @@ require "gtk2"
 
 require File.join(File.dirname(__FILE__), "core.rb")
 
+# GUI用ネームスペース
 module Packaged::GUI
 end
 
+# プラグインのインストールダイアログ
 module Packaged::GUI::Install
   module_function
 
@@ -14,18 +16,22 @@ module Packaged::GUI::Install
   @user_name = ""
   @result = nil
 
+  # 使ってるウィジェットとかのハッシュを返す
   def widgets
     @widgets
   end
 
+  # ダイアログの結果を返す
   def result
     @result
   end
 
+  # OKボタンの状態を設定する
   def set_button_state(status)
     widgets[:window].set_response_sensitive(Gtk::Dialog::RESPONSE_OK, status)
   end
 
+  # ウインドウを構築する
   def create_window(parent_window)
     widgets[:window] = Gtk::Dialog.new("プラグインのインストール", parent_window, Gtk::Dialog::MODAL)
     widgets[:window].set_default_size(640, 480)
@@ -33,12 +39,12 @@ module Packaged::GUI::Install
     widgets[:window].add_button(Gtk::Stock::OK, Gtk::Dialog::RESPONSE_OK)
     widgets[:window].add_button(Gtk::Stock::CANCEL, Gtk::Dialog::RESPONSE_CANCEL)
 
+    # ダイアログが何らかの理由で閉じられるとき
     widgets[:window].signal_connect(:response) { |w, res|
       case res
       when Gtk::Dialog::RESPONSE_OK
+        # プラグインのインストール
         repo_name = widgets[:list].selection.selected[0]
-
-        spec = Packaged::Remote::get_spec(@user_name, repo_name)
 
         tgz = Packaged::Remote::get_repo_tarball(@user_name, repo_name, "master")
 
@@ -62,6 +68,7 @@ module Packaged::GUI::Install
     widgets[:search_button] = Gtk::Button.new
     widgets[:search_button].label = "リポジトリ検索"
 
+    # 検索ボタンクリック
     widgets[:search_button].signal_connect(:clicked) { |w|
       @user_name = widgets[:user_text].buffer.text
 
@@ -97,6 +104,7 @@ module Packaged::GUI::Install
     widgets
   end
 
+  # リストビューを構築する
   def create_listview_box
     result = {}
 
@@ -113,6 +121,7 @@ module Packaged::GUI::Install
     result[:store] = create_liststore
     result[:list].set_model(reload_liststore(result[:store]))
 
+    # 選択行が変更された
     result[:list].signal_connect(:cursor_changed) {
       if result[:list].selection.selected
         slug = result[:list].selection.selected[0]
@@ -131,11 +140,13 @@ module Packaged::GUI::Install
     result
   end
 
+  # リストストアを作る
   def create_liststore
     store = Gtk::ListStore.new(String, String)
     store.set_sort_column_id(1)
   end
 
+  # リストビューに表示するデータを更新する
   def reload_liststore(store, user_name = nil)
     store.clear
 
@@ -152,23 +163,18 @@ module Packaged::GUI::Install
   end
 end
 
-
-
-
-
-
-
-
-
+# メインウインドウ
 module Packaged::GUI::Main
   module_function
 
   @widgets = {}
 
+  # 使ってるウィジェットとかのハッシュを返す
   def widgets
     @widgets
   end
 
+  # インストールボタン押下
   def menu_install(actiongroup, action)
     Packaged::GUI::Install.create_window(widgets[:window])
 
@@ -179,9 +185,11 @@ module Packaged::GUI::Main
     end
   end
 
+  # アンインストールボタン押下
   def menu_uninstall(actiongroup, action)
   end
 
+  # 有効化ボタン押下
   def menu_enable(actiongroup, action)
     slug = widgets[:list].selection.selected[2]
 
@@ -190,6 +198,7 @@ module Packaged::GUI::Main
     reload_liststore(widgets[:store])
   end
 
+  # 無効化ボタン押下
   def menu_disable(actiongroup, action)
     slug = widgets[:list].selection.selected[2]
 
@@ -198,6 +207,7 @@ module Packaged::GUI::Main
     reload_liststore(widgets[:store])
   end
 
+  # ツールバー構築用XML
   TOOLBAR = <<EOF
 <ui>
   <toolbar name="Toolbar">
@@ -212,7 +222,7 @@ module Packaged::GUI::Main
 </ui>
 EOF
 
-
+  # ツールバーを構築する
   def create_toolbar
     result = {}
 
