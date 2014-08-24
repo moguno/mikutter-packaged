@@ -149,7 +149,7 @@ module Packaged::GUI::Install
   # リストストアを作る
   def create_liststore
     store = Gtk::ListStore.new(String, String, Hash)
-    store.set_sort_column_id(1)
+    store.set_sort_column_id(0)
   end
 
   # リストビューに表示するデータを更新する
