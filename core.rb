@@ -217,6 +217,3 @@ module Packaged::Remote
     result
   end
 end
-
-
-

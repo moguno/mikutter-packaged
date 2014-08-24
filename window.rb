@@ -11,9 +11,19 @@ module Packaged::GUI::Install
   module_function
 
   @widgets = {}
+  @user_name = ""
+  @result = nil
 
   def widgets
     @widgets
+  end
+
+  def result
+    @result
+  end
+
+  def set_button_state(status)
+    widgets[:window].set_response_sensitive(Gtk::Dialog::RESPONSE_OK, status)
   end
 
   def create_window(parent_window)
@@ -26,11 +36,18 @@ module Packaged::GUI::Install
     widgets[:window].signal_connect(:response) { |w, res|
       case res
       when Gtk::Dialog::RESPONSE_OK
-        puts "OK"
-        widgets[:window].destroy
-      when Gtk::Dialog::RESPONSE_CANCEL
-        widgets[:window].destroy
+        repo_name = widgets[:list].selection.selected[0]
+
+        spec = Packaged::Remote::get_spec(@user_name, repo_name)
+
+        tgz = Packaged::Remote::get_repo_tarball(@user_name, repo_name, "master")
+
+        Packaged::Local::install_plugin_by_tgz(tgz)
       end
+
+      widgets[:window].destroy
+
+      @result = res
     }
 
     widgets[:box] = widgets[:window].vbox
@@ -46,6 +63,8 @@ module Packaged::GUI::Install
     widgets[:search_button].label = "リポジトリ検索"
 
     widgets[:search_button].signal_connect(:clicked) { |w|
+      @user_name = widgets[:user_text].buffer.text
+
       widgets[:search_button].label = "検索中"
       widgets[:search_button].sensitive = false
       widgets[:user_text].sensitive = false
@@ -54,7 +73,7 @@ module Packaged::GUI::Install
         Gtk::main_iteration
       end
 
-      reload_liststore(widgets[:store], widgets[:user_text].buffer.text)
+      reload_liststore(widgets[:store], @user_name)
 
       widgets[:search_button].label = "リポジトリ検索"
       widgets[:search_button].sensitive = true
@@ -70,6 +89,10 @@ module Packaged::GUI::Install
     widgets[:window].add(widgets[:box])
     widgets[:box].pack_start(widgets[:search_box], false)
     widgets[:box].pack_start(widgets[:scrolled_list], true)
+
+    set_button_state(false)
+
+    widgets[:box].show_all
 
     widgets
   end
@@ -89,7 +112,17 @@ module Packaged::GUI::Install
 
     result[:store] = create_liststore
     result[:list].set_model(reload_liststore(result[:store]))
- 
+
+    result[:list].signal_connect(:cursor_changed) {
+      if result[:list].selection.selected
+        slug = result[:list].selection.selected[0]
+
+        info = Packaged::Local::get_plugin_info_by_slug(slug)
+
+        set_button_state(info == nil)
+      end
+    }
+
     result[:scrolled_list] = Gtk::ScrolledWindow.new
     result[:scrolled_list].set_policy(Gtk::POLICY_NEVER, Gtk::POLICY_AUTOMATIC)
 
@@ -100,6 +133,7 @@ module Packaged::GUI::Install
 
   def create_liststore
     store = Gtk::ListStore.new(String, String)
+    store.set_sort_column_id(1)
   end
 
   def reload_liststore(store, user_name = nil)
@@ -137,16 +171,31 @@ module Packaged::GUI::Main
 
   def menu_install(actiongroup, action)
     Packaged::GUI::Install.create_window(widgets[:window])
-    Packaged::GUI::Install::widgets[:window].show_all
+
+    Packaged::GUI::Install::widgets[:window].run
+
+    if Packaged::GUI::Install::result == Gtk::Dialog::RESPONSE_OK
+      reload_liststore(widgets[:store])
+    end
   end
 
   def menu_uninstall(actiongroup, action)
   end
 
   def menu_enable(actiongroup, action)
+    slug = widgets[:list].selection.selected[2]
+
+    Packaged::Local::enable_plugin(slug)
+
+    reload_liststore(widgets[:store])
   end
 
   def menu_disable(actiongroup, action)
+    slug = widgets[:list].selection.selected[2]
+
+    Packaged::Local::disable_plugin(slug)
+
+    reload_liststore(widgets[:store])
   end
 
   TOOLBAR = <<EOF
@@ -154,7 +203,9 @@ module Packaged::GUI::Main
   <toolbar name="Toolbar">
     <toolitem action="install" />
     <separator />
+<!---
     <toolitem action="uninstall" />
+--->
     <toolitem action="enable" />
     <toolitem action="disable" />
   </toolbar>
@@ -187,8 +238,12 @@ EOF
   end
 
   def create_window
-    widgets[:window] = Gtk::Window.new
+    widgets[:window] = Gtk::Window.new("mikutterプラグインマネージャ \"Packaged\"")
     widgets[:window].set_default_size(640, 480)
+
+    widgets[:window].signal_connect(:destroy) {
+      Gtk::main_quit
+    }
 
     widgets[:box] = Gtk::VBox.new
 
@@ -200,7 +255,30 @@ EOF
     widgets[:box].pack_start(widgets[:toolbar], false)
     widgets[:box].pack_start(widgets[:scrolled_list], true)
 
+    set_toolbar_state(:unmanaged)
+
     widgets
+  end
+
+  def set_toolbar_state(status)
+    uninstall = widgets[:action_group].get_action("uninstall")
+    enable = widgets[:action_group].get_action("enable")
+    disable = widgets[:action_group].get_action("disable")
+
+    case status
+    when :unmanaged
+      uninstall.sensitive = false
+      enable.sensitive = false
+      disable.sensitive = false
+    when :enabled
+      uninstall.sensitive = true
+      enable.sensitive = false
+      disable.sensitive = true
+    when :disabled
+      uninstall.sensitive = true
+      enable.sensitive = true
+      disable.sensitive = false
+    end
   end
 
   def create_listview_box
@@ -216,30 +294,16 @@ EOF
       result[:list].append_column(col)
     }
 
+    result[:store] = create_liststore
+    result[:list].set_model(reload_liststore(result[:store]))
+
     result[:list].signal_connect(:cursor_changed) {
       if result[:list].selection.selected
         slug = result[:list].selection.selected[2]
 
         info = Packaged::Local::get_plugin_info_by_slug(slug)
 
-        uninstall = widgets[:action_group].get_action("uninstall")
-        enable = widgets[:action_group].get_action("enable")
-        disable = widgets[:action_group].get_action("disable")
-
-        case info[:status]
-        when :unmanaged
-          uninstall.sensitive = false
-          enable.sensitive = false
-          disable.sensitive = false
-        when :enabled
-          uninstall.sensitive = true
-          enable.sensitive = false
-          disable.sensitive = true
-        when :disabled
-          uninstall.sensitive = true
-          enable.sensitive = true
-          disable.sensitive = false
-        end
+        set_toolbar_state(info[:status])
       end
     }
 
@@ -253,9 +317,16 @@ EOF
 
   def create_liststore
     store = Gtk::ListStore.new(String, String, String, String)
+    store.set_sort_column_id(2)
   end
 
   def reload_liststore(store)
+    status_str = {
+      :unmanaged => "管理外",
+      :enabled => "有効",
+      :disabled => "無効"
+    }
+
     store.clear
 
     Packaged::Local::get_plugins.each { |plugin|
@@ -263,9 +334,9 @@ EOF
 
       case plugin[:status]
       when :unmanaged
-        store.set_values(item, [plugin[:status].to_s, "", plugin[:dir], ""])
+        store.set_values(item, [status_str[plugin[:status]], "", plugin[:dir], ""])
       else
-        store.set_values(item, [plugin[:status].to_s, plugin[:spec]["author"], plugin[:spec]["slug"], plugin[:spec]["description"]])
+        store.set_values(item, [status_str[plugin[:status]], plugin[:spec]["author"], plugin[:spec]["slug"], plugin[:spec]["description"]])
       end
     }
 
@@ -274,11 +345,6 @@ EOF
 end
 
 Packaged::GUI::Main::create_window
-
-store = Packaged::GUI::Main::create_liststore
-
-Packaged::GUI::Main::widgets[:list].set_model(Packaged::GUI::Main::reload_liststore(store))
-
 Packaged::GUI::Main::widgets[:window].show_all
 
 Gtk::main
