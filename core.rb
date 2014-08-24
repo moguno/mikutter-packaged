@@ -1,3 +1,5 @@
+#coding: UTF-8
+
 require 'rubygems'
 require 'net/https'
 require 'yaml'
@@ -8,6 +10,16 @@ module Packaged
 end
 
 module Packaged::Common
+end
+
+module Packaged::GUI
+  module_function
+
+  def error_box(parent, message)
+    dialog = Gtk::MessageDialog.new(parent, Gtk::Dialog::DESTROY_WITH_PARENT, Gtk::MessageDialog::ERROR, Gtk::MessageDialog::BUTTONS_OK, message)
+    dialog.run
+    dialog.destroy
+  end
 end
 
 module Packaged::Local
@@ -139,10 +151,29 @@ end
 module Packaged::Remote
   module_function
 
+  # 例外
+  class RemoteException < StandardError
+    attr_reader :obj
+
+    def initialize(obj)
+      @obj = obj
+    end
+
+    def message
+      if @obj.respond_to?(:inspect)
+        @obj.inspect
+      else
+        @obj.to_s
+      end
+    end
+  end
+
   # 生ファイルを要求する
   def query_raw_file(url_str, limit = 3)
+    puts url_str
+
     if limit == 0
-      return nil
+      raise "redirect limit exceeded"
     end
 
     url = URI.parse(url_str)
@@ -165,14 +196,19 @@ module Packaged::Remote
     when Net::HTTPRedirection
       query_raw_file(response["location"], limit - 1)
     else
-      nil
+      raise RemoteException.new(response)
     end
   end
 
   # YAMLを要求する
   def query(url_str)
     yaml = query_raw_file(url_str)
-    YAML.load(yaml)
+
+    if yaml
+      YAML.load(yaml)
+    else
+      nil
+    end
   end
 
   # GitHubからリポジトリの一覧を得る
@@ -184,7 +220,11 @@ module Packaged::Remote
   def get_maybe_mikutter_repos(user_name)
     repos = get_repos(user_name)
 
-    repos.select { |_| _["name"].to_s =~ /mikutter/i }
+    if repos
+      repos.select { |_| _["name"].to_s =~ /mikutter/i }
+    else
+      []
+    end
   end
 
   # GitHubのタグを得る
@@ -202,16 +242,27 @@ module Packaged::Remote
     query_raw_file("https://api.github.com/repos/#{user_name}/#{repo_name}/tarball/#{tag}")
   end
 
+  # プラグインの情報を得る
+  def get_plugin_info(user_name, repo_name)
+    result = {}
+
+    result[:repo_name] = repo_name
+    result[:spec] = Packaged::Remote::get_spec(user_name, _["name"])
+
+    result
+  end
+
   # GitHubからSPECファイルを取得する
   def get_spec(user_name, repo_name)
     result = nil
 
     [".mikutter.yml", "spec"].each { |path|
-      tmp = get_file(user_name, repo_name, "master", path)
-
-      if tmp
-        result = YAML.load(tmp)
+      begin
+        result = YAML.load(get_file(user_name, repo_name, "master", path))
+        
         break
+      rescue
+        # 例外は無視
       end
     }
 

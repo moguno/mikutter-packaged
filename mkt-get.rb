@@ -1,3 +1,5 @@
+#! /usr/bin/env ruby
+#coding: UTF-8
 
 require File.join(File.dirname(__FILE__), "core.rb")
 
