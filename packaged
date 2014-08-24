@@ -1,0 +1,9 @@
+#! /usr/bin/env ruby
+
+require 'rubygems'
+require File.join(File.dirname(__FILE__), "main_window.rb")
+
+Packaged::GUI::Main::create_window
+Packaged::GUI::Main::widgets[:window].show_all
+
+Gtk::main
