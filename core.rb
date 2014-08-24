@@ -176,17 +176,7 @@ module Packaged::Remote
       raise RemoteException.new("redirect limit exceeded")
     end
 
-    url = URI.parse(url_str)
-
-    http = Net::HTTP.new(url.host, url.port)
-
-    if url.scheme == "https"
-      http.use_ssl = true
-    end
-
-    get = Net::HTTP::Get.new(url.path)
-
-    response = http.request(get)
+    response = Net::HTTP::get_response(URI.parse(url_str))
 
     case response
     # 成功
@@ -213,7 +203,7 @@ module Packaged::Remote
 
   # GitHubからリポジトリの一覧を得る
   def get_repos(user_name)
-    query("https://api.github.com/users/#{user_name}/repos")
+    query("https://api.github.com/users/#{user_name}/repos?per_page=100")
   end
 
   # 多分mikutterプラグインのリポジトリを選別する
