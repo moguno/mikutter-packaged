@@ -3,20 +3,24 @@ mikutter-packaged
 
 mikutterプラグインマネージャ "Packaged" 
 
-= これなん？
+# これなん？
 
 GitHubのmikutterプラグインのインストール
 インストール済みのプラグインの有効／無効の変更
 
-= 動作環境
+# 動作環境
 
 ruby2.1（で動作確認しました）
 UNIXっぽいOS（Windowsはまだ見てません）
 
-= 使い方
+# 使い方
 
 ./packaged
 
-= 必須gem
+# 必須gem
 
 gtk2とminitarが必要です。
+
+# その他
+
+アルファバージョンなんで是非バグ報告や改良パッチを下さい。
