@@ -21,7 +21,7 @@ module Packaged::Common
 end
 
 module Packaged::GUI
-  module_function
+  extend self
 
   def error_box(parent, message)
     dialog = Gtk::MessageDialog.new(parent, Gtk::Dialog::DESTROY_WITH_PARENT, Gtk::MessageDialog::ERROR, Gtk::MessageDialog::BUTTONS_OK, message)
@@ -31,7 +31,7 @@ module Packaged::GUI
 end
 
 module Packaged::Local
-  module_function
+  extend self
 
   PLUGIN_DIR = File::expand_path("~/.mikutter/plugin")
 
@@ -157,7 +157,7 @@ module Packaged::Local
 end
 
 module Packaged::Remote
-  module_function
+  extend self
 
   # 例外
   class RemoteException < StandardError
