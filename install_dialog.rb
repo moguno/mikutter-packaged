@@ -11,7 +11,7 @@ end
 
 # プラグインのインストールダイアログ
 module Packaged::GUI::Install
-  module_function
+  extend self
 
   @widgets = {}
   @user_name = ""

@@ -10,10 +10,18 @@ module Packaged
 end
 
 module Packaged::Common
+  extend self
+
+  # specファイルの内容について、扱いやすいように値を加工する
+  def spec_normalization(spec)
+    spec = YAML.load(spec) if spec.is_a? String
+    spec["slug".freeze] = spec["slug".freeze].to_sym
+    spec
+  end
 end
 
 module Packaged::GUI
-  module_function
+  extend self
 
   def error_box(parent, message)
     dialog = Gtk::MessageDialog.new(parent, Gtk::Dialog::DESTROY_WITH_PARENT, Gtk::MessageDialog::ERROR, Gtk::MessageDialog::BUTTONS_OK, message)
@@ -23,7 +31,7 @@ module Packaged::GUI
 end
 
 module Packaged::Local
-  module_function
+  extend self
 
   PLUGIN_DIR = File::expand_path("~/.mikutter/plugin")
 
@@ -39,7 +47,7 @@ module Packaged::Local
           fp.read
         }
 
-        result = YAML.load(yaml_str)
+        result = Packaged::Common::spec_normalization(yaml_str)
         break
       end
     }
@@ -72,7 +80,7 @@ module Packaged::Local
 
     spec = Packaged::Local::get_spec(extracted_dir)
 
-    FileUtils.mv(extracted_dir, File.join(plugin_dir, spec["slug"].to_s)) 
+    FileUtils.mv(extracted_dir, File.join(plugin_dir, spec["slug"].to_s))
   end
 
   # インストールされたプラグインの情報を取得する
@@ -149,7 +157,7 @@ module Packaged::Local
 end
 
 module Packaged::Remote
-  module_function
+  extend self
 
   # 例外
   class RemoteException < StandardError
@@ -248,8 +256,7 @@ module Packaged::Remote
 
     [".mikutter.yml", "spec"].each { |path|
       begin
-        result = YAML.load(get_file(user_name, repo_name, "master", path))
-        
+        result = Packaged::Common::spec_normalization(get_file(user_name, repo_name, "master", path))
         break
       rescue
         # 例外は無視

@@ -8,7 +8,7 @@ require File.join(File.dirname(__FILE__), "install_dialog.rb")
 
 # メインウインドウ
 module Packaged::GUI::Main
-  module_function
+  extend self
 
   @widgets = {}
 
