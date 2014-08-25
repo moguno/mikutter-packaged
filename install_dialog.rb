@@ -70,6 +70,9 @@ module Packaged::GUI::Install
     widgets[:user_label].text = "GitHubユーザ名"
 
     widgets[:user_text] = Gtk::Entry.new
+    widgets[:user_text].signal_connect(:activate) {
+      widgets[:search_button].clicked
+    }
 
     widgets[:search_button] = Gtk::Button.new
     widgets[:search_button].label = "リポジトリ検索"
