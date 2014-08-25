@@ -4,6 +4,7 @@ require 'rubygems'
 require 'gtk2'
 
 require File.join(File.dirname(__FILE__), "core.rb")
+require File.join(File.dirname(__FILE__), "mikutter_like.rb")
 
 # GUI用ネームスペース
 module Packaged::GUI
@@ -137,6 +138,15 @@ module Packaged::GUI::Install
         set_button_state(info == nil)
       end
     }
+
+    # 行をダブルクリックした
+    result[:list].signal_connect(:row_activated) {
+      if result[:list].selection.selected
+        repo_name = widgets[:list].selection.selected[2][:repo_name]
+
+        Packaged::Common::openurl("http://github.com/#{@user_name}/#{repo_name}")
+      end
+    } 
 
     result[:scrolled_list] = Gtk::ScrolledWindow.new
     result[:scrolled_list].set_policy(Gtk::POLICY_NEVER, Gtk::POLICY_AUTOMATIC)
