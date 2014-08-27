@@ -21,6 +21,7 @@ module Packaged::GUI::Install
   # カラム定義
   @columns = Packaged::Common::ColumnHelper.new
 
+  @columns.add(:status, {:name => "状態", :visible => true, :type => String})
   @columns.add(:name, {:name => "名前", :visible => true, :type => String})
   @columns.add(:description, {:name => "説明", :visible => true, :type => String})
   @columns.add(:fore_color, {:name => "文字色", :visible => false, :type => String})
@@ -144,11 +145,8 @@ module Packaged::GUI::Install
     result[:list].signal_connect(:cursor_changed) {
       if result[:list].selection.selected
         info = result[:list].selection.selected[@columns[:info].index]
-        slug = info[:spec]["slug"]
 
-        local_info = Packaged::Local::get_plugin_info_by_slug(slug)
-
-        set_button_state(local_info == nil)
+        set_button_state(info[:status] != :installed)
       end
     }
 
@@ -173,11 +171,16 @@ module Packaged::GUI::Install
   # リストストアを作る
   def create_liststore
     store = Gtk::ListStore.new(*@columns.map { |_| _.type })
-    store.set_sort_column_id(0)
+    store.set_sort_column_id(@columns[:name].index)
   end
 
   # リストビューに表示するデータを更新する
   def reload_liststore(store, user_name = nil)
+    status_str = {
+      :installed => { :str => "インストール済み", :color => "blue" },
+      :not_installed => { :str => "未インストール", :color => "black" },
+    }
+
     store.clear
 
     if user_name
@@ -196,10 +199,11 @@ module Packaged::GUI::Install
 
       results.each { |_|
         values = {
+          :status => status_str[_[:status]][:str],
           :name => _[:spec]["slug"],
           :description => _[:spec]["description"],
           :info => _,
-          :fore_color => "blue",
+          :fore_color => status_str[_[:status]][:color],
         }
 
         item = store.append

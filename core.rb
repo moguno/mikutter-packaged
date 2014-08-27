@@ -292,6 +292,14 @@ module Packaged::Remote
     result[:repo_name] = repo_name
     result[:spec] = Packaged::Remote::get_spec(user_name, repo_name)
 
+    local_info = Packaged::Local::get_plugin_info_by_slug(result[:spec]["slug"])
+
+    result[:status] = if local_info
+      :installed
+    else
+      :not_installed
+    end
+
     result
   end
 
