@@ -5,6 +5,7 @@ require 'net/https'
 require 'yaml'
 require 'zlib'
 require 'archive/tar/minitar'
+require 'ostruct'
 
 module Packaged
 end
@@ -17,6 +18,50 @@ module Packaged::Common
     spec = YAML.load(spec) if spec.is_a? String
     spec["slug".freeze] = spec["slug".freeze].to_sym
     spec
+  end
+
+  # リストビューのカラムを使いやすくするクラス
+  class ColumnHelper
+
+    # コンストラクタ
+    def initialize
+      @columns = {}
+      @index = 0
+    end
+
+    # カラム情報を登録
+    def add(symbol, data)
+      struct = OpenStruct.new(data)
+      struct.index = @index
+      struct.freeze
+
+      @columns[symbol] = struct
+
+      @index += 1
+    end
+
+    # カラム情報を参照
+    def [](symbol)
+      @columns[symbol]
+    end
+
+    # 値をカラム順に格納したファイルを作る
+    def make_values(hash)
+      values = @columns.map { |_| "" }
+
+      hash.each { |k, v|
+        values[@columns[k].index] = v
+      }
+
+      values
+    end
+
+     # Enumerable用
+    def each(&block)
+      @columns.values.each { |_| block.call(_) }
+    end
+
+    include Enumerable
   end
 end
 
@@ -246,6 +291,14 @@ module Packaged::Remote
 
     result[:repo_name] = repo_name
     result[:spec] = Packaged::Remote::get_spec(user_name, repo_name)
+
+    local_info = Packaged::Local::get_plugin_info_by_slug(result[:spec]["slug"])
+
+    result[:status] = if local_info
+      :installed
+    else
+      :not_installed
+    end
 
     result
   end
