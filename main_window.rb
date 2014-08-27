@@ -12,6 +12,16 @@ module Packaged::GUI::Main
 
   @widgets = {}
 
+  # カラム定義
+  @columns = Packaged::Common::ColumnHelper.new
+
+  @columns.add(:status, {:name => "状態", :visible => true, :type => String})
+  @columns.add(:author, {:name => "作者", :visible => true, :type => String})
+  @columns.add(:name, {:name => "名前", :visible => true, :type => String})
+  @columns.add(:description, {:name => "説明", :visible => true, :type => String})
+  @columns.add(:fore_color, {:name => "文字色", :visible => false, :type => String})
+  @columns.add(:info, {:name => "情報オブジェクト", :visible => false, :type => Hash})
+
   # 使ってるウィジェットとかのハッシュを返す
   def widgets
     @widgets
@@ -34,7 +44,7 @@ module Packaged::GUI::Main
 
   # 有効化ボタン押下
   def menu_enable(actiongroup, action)
-    slug = widgets[:list].selection.selected[2]
+    slug = widgets[:list].selection.selected[@columns[:info].index][:spec]["slug"]
 
     Packaged::Local::enable_plugin(slug)
 
@@ -43,7 +53,7 @@ module Packaged::GUI::Main
 
   # 無効化ボタン押下
   def menu_disable(actiongroup, action)
-    slug = widgets[:list].selection.selected[2]
+    slug = widgets[:list].selection.selected[@columns[:info].index][:spec]["slug"]
 
     Packaged::Local::disable_plugin(slug)
 
@@ -90,6 +100,7 @@ EOF
     result
   end
 
+  # ウインドウを構築
   def create_window
     widgets[:window] = Gtk::Window.new("mikutterプラグインマネージャ \"Packaged\"")
     widgets[:window].set_default_size(640, 480)
@@ -113,6 +124,7 @@ EOF
     widgets
   end
 
+  # ツールバーボタンの状態を変更する
   def set_toolbar_state(status)
     uninstall = widgets[:action_group].get_action("uninstall")
     enable = widgets[:action_group].get_action("enable")
@@ -134,6 +146,7 @@ EOF
     end
   end
 
+  # リストビューを構築する
   def create_listview_box
     result = {}
 
@@ -142,8 +155,8 @@ EOF
 
     renderer = Gtk::CellRendererText.new
 
-    ["状態", "作者", "名前", "説明" ].each_with_index { |col_name, i|
-      col = Gtk::TreeViewColumn.new(col_name, renderer, :text => i)
+    @columns.select { |_| _.visible }.each { |column|
+      col = Gtk::TreeViewColumn.new(column.name, renderer, :foreground => @columns[:fore_color].index, :text => column.index)
       result[:list].append_column(col)
     }
 
@@ -152,9 +165,7 @@ EOF
 
     result[:list].signal_connect(:cursor_changed) {
       if result[:list].selection.selected
-        slug = result[:list].selection.selected[2]
-
-        info = Packaged::Local::get_plugin_info_by_slug(slug)
+        info = widgets[:list].selection.selected[@columns[:info].index]
 
         set_toolbar_state(info[:status])
       end
@@ -169,15 +180,15 @@ EOF
   end
 
   def create_liststore
-    store = Gtk::ListStore.new(String, String, String, String)
-    store.set_sort_column_id(2)
+    store = Gtk::ListStore.new(*@columns.map { |_| _.type })
+    store.set_sort_column_id(@columns[:name].index)
   end
 
   def reload_liststore(store)
     status_str = {
-      :unmanaged => "管理外",
-      :enabled => "有効",
-      :disabled => "無効"
+      :unmanaged => { :str => "管理外", :color => "grey" },
+      :enabled => { :str => "有効", :color => "black" },
+      :disabled => { :str => "無効", :color => "red" },
     }
 
     store.clear
@@ -185,12 +196,26 @@ EOF
     Packaged::Local::get_plugins.each { |plugin|
       item = store.append
 
-      case plugin[:status]
+      values = case plugin[:status]
       when :unmanaged
-        store.set_values(item, [status_str[plugin[:status]], "", plugin[:dir], ""])
+        {
+          :status => status_str[plugin[:status]][:str],
+          :name => plugin[:dir],
+          :info => plugin,
+          :fore_color => status_str[plugin[:status]][:color]
+        }
       else
-        store.set_values(item, [status_str[plugin[:status]], plugin[:spec]["author"], plugin[:spec]["slug"], plugin[:spec]["description"]])
+        {
+          :status => status_str[plugin[:status]][:str],
+          :author => plugin[:spec]["author"],
+          :name => plugin[:spec]["slug"],
+          :description => plugin[:spec]["description"],
+          :info => plugin,
+          :fore_color => status_str[plugin[:status]][:color]
+        }
       end
+
+      store.set_values(item, @columns.make_values(values))
     }
 
     store

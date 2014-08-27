@@ -18,6 +18,14 @@ module Packaged::GUI::Install
   @user_name = ""
   @result = nil
 
+  # カラム定義
+  @columns = Packaged::Common::ColumnHelper.new
+
+  @columns.add(:name, {:name => "名前", :visible => true, :type => String})
+  @columns.add(:description, {:name => "説明", :visible => true, :type => String})
+  @columns.add(:fore_color, {:name => "文字色", :visible => false, :type => String})
+  @columns.add(:info, {:name => "情報オブジェクト", :visible => false, :type => Hash})
+
   # 使ってるウィジェットとかのハッシュを返す
   def widgets
     @widgets
@@ -47,7 +55,8 @@ module Packaged::GUI::Install
         case res
         when Gtk::Dialog::RESPONSE_OK
           # プラグインのインストール
-          repo_name = widgets[:list].selection.selected[2][:repo_name]
+          info = widgets[:list].selection.selected[@columns[:info].index]
+          repo_name = info[:repo_name]
 
           tgz = Packaged::Remote::get_repo_tarball(@user_name, repo_name, "master")
 
@@ -123,8 +132,8 @@ module Packaged::GUI::Install
 
     renderer = Gtk::CellRendererText.new
 
-    ["名前", "説明" ].each_with_index { |col_name, i|
-      col = Gtk::TreeViewColumn.new(col_name, renderer, :text => i)
+    @columns.select { |_| _.visible }.each { |column|
+      col = Gtk::TreeViewColumn.new(column.name, renderer, :foreground => @columns[:fore_color].index, :text => column.index)
       result[:list].append_column(col)
     }
 
@@ -134,18 +143,20 @@ module Packaged::GUI::Install
     # 選択行が変更された
     result[:list].signal_connect(:cursor_changed) {
       if result[:list].selection.selected
-        slug = result[:list].selection.selected[0]
+        info = result[:list].selection.selected[@columns[:info].index]
+        slug = info[:spec]["slug"]
 
-        info = Packaged::Local::get_plugin_info_by_slug(slug)
+        local_info = Packaged::Local::get_plugin_info_by_slug(slug)
 
-        set_button_state(info == nil)
+        set_button_state(local_info == nil)
       end
     }
 
     # 行をダブルクリックした
     result[:list].signal_connect(:row_activated) {
       if result[:list].selection.selected
-        repo_name = widgets[:list].selection.selected[2][:repo_name]
+        info = widgets[:list].selection.selected[@columns[:info].index]
+        repo_name = info[:repo_name]
 
         Packaged::Common::openurl("http://github.com/#{@user_name}/#{repo_name}")
       end
@@ -161,7 +172,7 @@ module Packaged::GUI::Install
 
   # リストストアを作る
   def create_liststore
-    store = Gtk::ListStore.new(String, String, Hash)
+    store = Gtk::ListStore.new(*@columns.map { |_| _.type })
     store.set_sort_column_id(0)
   end
 
@@ -184,8 +195,15 @@ module Packaged::GUI::Install
       }
 
       results.each { |_|
+        values = {
+          :name => _[:spec]["slug"],
+          :description => _[:spec]["description"],
+          :info => _,
+          :fore_color => "blue",
+        }
+
         item = store.append
-        store.set_values(item, [_[:spec]["slug"], _[:spec]["description"], _])
+        store.set_values(item, @columns.make_values(values))
       }
     end
 
