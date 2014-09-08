@@ -4,6 +4,9 @@ require 'rubygems'
 require 'gtk2'
 
 require File.join(File.dirname(__FILE__), "core.rb")
+require File.join(File.dirname(__FILE__), "core_common.rb")
+require File.join(File.dirname(__FILE__), "core_gui.rb")
+require File.join(File.dirname(__FILE__), "core_local.rb")
 require File.join(File.dirname(__FILE__), "install_dialog.rb")
 
 # メインウインドウ
@@ -13,7 +16,7 @@ module Packaged::GUI::Main
   @widgets = {}
 
   # カラム定義
-  @columns = Packaged::Common::ColumnHelper.new
+  @columns = Packaged::GUI::ColumnHelper.new
 
   @columns.add(:status, {:name => "状態", :visible => true, :type => String})
   @columns.add(:author, {:name => "作者", :visible => true, :type => String})

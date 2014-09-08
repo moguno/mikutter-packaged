@@ -4,11 +4,9 @@ require 'rubygems'
 require 'gtk2'
 
 require File.join(File.dirname(__FILE__), "core.rb")
+require File.join(File.dirname(__FILE__), "core_gui.rb")
+require File.join(File.dirname(__FILE__), "core_remote.rb")
 require File.join(File.dirname(__FILE__), "mikutter_like.rb")
-
-# GUI用ネームスペース
-module Packaged::GUI
-end
 
 # プラグインのインストールダイアログ
 module Packaged::GUI::Install
@@ -19,7 +17,7 @@ module Packaged::GUI::Install
   @result = nil
 
   # カラム定義
-  @columns = Packaged::Common::ColumnHelper.new
+  @columns = Packaged::GUI::ColumnHelper.new
 
   @columns.add(:status, {:name => "状態", :visible => true, :type => String})
   @columns.add(:name, {:name => "名前", :visible => true, :type => String})
