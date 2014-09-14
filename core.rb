@@ -87,7 +87,7 @@ module Packaged::Local
     [".mikutter.yml", "spec"].each { |path|
       file = File.join(dir, path)
 
-      if File.exist?(file)
+      if File.file?(file)
         yaml_str = File.open(file) { |fp|
           fp.read
         }
