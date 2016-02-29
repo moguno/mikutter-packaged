@@ -5,7 +5,6 @@ module Packaged::Common
 
   begin
     require 'Win32API'
-    require file
   rescue LoadError
   end
 

@@ -1,6 +1,7 @@
 #! /usr/bin/env ruby
 
 require 'rubygems'
+require 'bundler/setup'
 require File.join(File.dirname(__FILE__), "main_window.rb")
 
 Packaged::GUI::Main::create_window
