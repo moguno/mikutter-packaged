@@ -229,7 +229,13 @@ module Packaged::Remote
       raise RemoteException.new("redirect limit exceeded")
     end
 
-    response = Net::HTTP::get_response(URI.parse(url_str))
+    response = begin
+      Net::HTTP::get_response(URI.parse(url_str))
+    rescue OpenSSL::SSL::SSLError
+      # あんまり良く無いが証明書を無視してリトライ
+      OpenSSL::SSL.const_set("VERIFY_PEER", OpenSSL::SSL::VERIFY_NONE)
+      Net::HTTP::get_response(URI.parse(url_str))
+    end
 
     case response
     # 成功
